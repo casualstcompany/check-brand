@@ -1,0 +1,248 @@
+{
+  "settings": {
+    "refresh_interval": "5s",
+    "analysis": {
+      "filter": {
+        "english_stop": {
+          "type": "stop",
+          "stopwords": "_english_"
+        },
+        "english_stemmer": {
+          "type": "stemmer",
+          "language": "english"
+        },
+        "english_possessive_stemmer": {
+          "type": "stemmer",
+          "language": "possessive_english"
+        },
+        "russian_stop": {
+          "type": "stop",
+          "stopwords": "_russian_"
+        },
+        "russian_stemmer": {
+          "type": "stemmer",
+          "language": "russian"
+        }
+      },
+      "analyzer": {
+        "ru_en": {
+          "tokenizer": "standard",
+          "filter": [
+            "lowercase",
+            "english_stop",
+            "english_stemmer",
+            "english_possessive_stemmer",
+            "russian_stop",
+            "russian_stemmer"
+          ]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "id": {
+        "type": "keyword"
+      },
+      "wallet_owner": {
+        "type": "keyword"
+      },
+      "hide": {
+        "type": "boolean"
+      },
+      "block": {
+        "type": "boolean"
+      },
+      "number": {
+        "type": "long"
+      },
+      "mint": {
+        "type": "boolean"
+      },
+      "paid": {
+        "type": "boolean"
+      },
+      "email": {
+        "type": "keyword"
+      },
+      "upload_blockchain": {
+        "type": "boolean"
+      },
+      "freeze": {
+        "type": "boolean"
+      },
+      "profit": {
+        "type": "scaled_float",
+        "scaling_factor": 100000000
+      },
+      "type": {
+        "type": "keyword"
+      },
+      "name": {
+        "type": "text",
+        "analyzer": "ru_en"
+      },
+      "price": {
+        "type": "long"
+      },
+      "status_price": {
+        "type": "keyword"
+      },
+      "investor_royalty": {
+        "type": "scaled_float",
+        "scaling_factor": 100000000
+      },
+      "creator_royalty": {
+        "type": "scaled_float",
+        "scaling_factor": 100000000
+      },
+      "description": {
+        "type": "text",
+        "analyzer": "ru_en"
+      },
+      "close": {
+        "type": "boolean"
+      },
+      "close_image": {
+        "type": "keyword"
+      },
+      "unlockable": {
+        "type": "boolean"
+      },
+      "unlockable_content": {
+        "type": "keyword"
+      },
+      "status": {
+        "type": "keyword"
+      },
+      "address": {
+        "type": "keyword"
+      },
+      "file_1": {
+        "type": "keyword"
+      },
+      "file_2": {
+        "type": "keyword"
+      },
+      "file_1_name_ext": {
+        "type": "keyword"
+      },
+      "file_2_name_ext": {
+        "type": "keyword"
+      },
+      "url_opensea": {
+        "type": "keyword"
+      },
+      "currency_token": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword"
+          }
+        }
+      },
+      "creator_royalty_distributions": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "percent": {
+            "type": "scaled_float",
+            "scaling_factor": 100000000
+          },
+          "wallet": {
+            "type": "keyword"
+          }
+        }
+      },
+      "income_distributions": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "percent": {
+            "type": "scaled_float",
+            "scaling_factor": 100000000
+          },
+          "wallet": {
+            "type": "keyword"
+          }
+        }
+      },
+      "properties": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "text",
+            "analyzer": "ru_en"
+          },
+          "type": {
+            "type": "text",
+            "analyzer": "ru_en"
+          }
+        }
+      },
+      "levels_stats": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "text",
+            "analyzer": "ru_en"
+          },
+          "type": {
+            "type": "text",
+            "analyzer": "ru_en"
+          },
+          "value_1": {
+            "type": "integer"
+          },
+          "value_2": {
+            "type": "integer"
+          }
+        }
+      },
+      "collection": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "text",
+            "analyzer": "ru_en"
+          }
+        }
+      },
+      "pack": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "text",
+            "analyzer": "ru_en"
+          }
+        }
+      },
+      "updated_at": {
+        "type": "date"
+      },
+      "created_at": {
+        "type": "date"
+      }
+    }
+  }
+}

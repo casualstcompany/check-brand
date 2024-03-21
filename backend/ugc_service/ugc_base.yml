@@ -1,0 +1,30 @@
+services:
+  ugc_base:
+    restart: always
+    networks:
+      - backend_dev
+      - ugc_default
+    build:
+      context: .
+      dockerfile: ugc/Dockerfile
+    environment:
+      - DEBUG=${UGC_SERVICE_DEBUG}
+      - SERVER_NAME=UGCServiceServiceMain
+      - DB_NAME=${UGC_DB_NAME}
+      - DB_USER=${UGC_DB_USER}
+      - DB_PASSWORD=${UGC_DB_PASSWORD}
+      - DB_PORT=${UGC_DB_PORT}
+      - DB_HOST=${UGC_DB_HOST}
+      - REDIS_HOST=${UGC_REDIS_HOST}
+      - REDIS_PORT=${UGC_REDIS_PORT}
+      - REDIS_PASSWORD=${UGC_REDIS_PASSWORD}
+      - ADMIN_PROTOCOL=${ADMIN_PROTOCOL}
+      - ADMIN_HOST=${ADMIN_HOST}
+      - ADMIN_PORT=${ADMIN_PORT}
+      - AUTH_GRPC_HOST=${AUTH_GRPC_HOST}
+      - AUTH_GRPC_PORT=${AUTH_GRPC_PORT}
+      - ADMIN_GRPC_HOST=${ADMIN_GRPC_HOST}
+      - ADMIN_GRPC_PORT=${ADMIN_GRPC_PORT}
+      - NOTIFICATION_GRPC_HOST=${NOTIFICATION_GRPC_HOST}
+      - NOTIFICATION_GRPC_PORT=${NOTIFICATION_GRPC_PORT}
+      - UGC_GRPC_PORT=${UGC_GRPC_PORT}

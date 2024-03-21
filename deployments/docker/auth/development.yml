@@ -1,0 +1,70 @@
+version: "3.9"
+
+services:
+
+  db:
+    container_name: dev_auth_service_db
+    image: postgres:16.0-alpine
+    networks:
+      - auth_default
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    expose:
+      - "5432"
+    environment:
+      - POSTGRES_USER=${DEV_AUTH_DB_USER}
+      - POSTGRES_PASSWORD=${DEV_AUTH_DB_PASSWORD}
+      - POSTGRES_DB=${DEV_AUTH_DB_NAME}
+    
+  redis:
+    container_name: dev_auth_service_redis
+    image: redis:7.2.2-alpine
+    networks:
+      - auth_default
+    restart: always
+    expose:
+      - "6379"
+    command: redis-server --save 20 1 --loglevel warning --requirepass ${DEV_AUTH_REDIS_PASSWORD}
+
+  rest:
+    container_name: dev_auth_service_rest
+    extends:
+      file: service/dev_auth_base.yml
+      service: auth_base
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - media_volume:/usr/auth/src/media/
+    expose:
+      - "5000"
+    command: ["gunicorn", "--chdir", "app", "main:app", "-w", "2", "--threads", "2", "-b", "0.0.0.0:5000"]
+    environment:
+      - SERVER_NAME=auth_service_rest
+
+  grpc:
+    container_name: dev_auth_service_grpc
+    extends:
+      file: service/dev_auth_base.yml
+      service: auth_base
+    depends_on:
+      - db
+      - redis
+    expose:
+      - "50055"
+    command: ["python", "app/grpc_server.py"]
+    environment:
+      - SERVER_NAME=auth_service_grpc
+
+networks:
+  dev_backend_network:
+    external: true
+  dev_auth_network:
+    name: dev_auth_service_network
+
+volumes:
+  postgres_data:
+    name: dev_auth_service_db_data_volume
+  media_volume:
+    name: dev_auth_service_media_data_volume

@@ -1,0 +1,8 @@
+aio_pika==8.3.0
+pydantic==1.10.4
+grpcio-tools==1.51.1
+orjson==3.8.5
+aioredis==2.0.1
+backoff==2.2.1
+flake8==6.0.0
+isort==5.12.0

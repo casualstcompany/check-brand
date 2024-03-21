@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package config.nft_tokens;
+
+service CollectionGrpcController {
+    rpc List(CollectionListRequest) returns (CollectionListResponse) {}
+    rpc Retrieve(CollectionRetrieveRequest) returns (CollectionResponse) {}
+}
+
+service TokenGrpcController {
+    rpc List(TokenListRequest) returns (TokenListResponse) {}
+    rpc Retrieve(TokenRetrieveRequest) returns (TokenResponse) {}
+}
+
+message CollectionListRequest {
+}
+
+message CollectionListResponse {
+    repeated CollectionResponse results = 1;
+}
+
+message CollectionResponse {
+    string id = 1;
+    string logo = 2;
+    string name = 3;
+    string status = 4;
+    string account = 5;
+}
+
+message CollectionRetrieveRequest {
+    string id = 1;
+}
+
+message TokenListRequest {
+}
+
+message TokenListResponse {
+    repeated TokenResponse results = 1;
+}
+
+message TokenResponse {
+    string id = 1;
+    string status_price = 2;
+    double price = 3;
+    string status = 4;
+    bool mint = 5;
+    string collection = 6;
+    string name = 7;
+    string file_1 = 8;
+}
+
+message TokenRetrieveRequest {
+    string id = 1;
+}

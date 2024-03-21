@@ -1,0 +1,17 @@
+services:
+  admin_base:
+    restart: always
+    build:
+      context: .
+      dockerfile: notification_admin/Dockerfile
+    networks:
+      - notification_default
+    environment:
+      - DEBUG=${NOTIFICATION_ADMIN_DEBUG}
+      - SECRET_KEY=${NOTIFICATION_ADMIN_SECRET_KEY}
+      - ALLOWED_HOSTS=${NOTIFICATION_ADMIN_ALLOWED_HOSTS}
+      - DB_NAME=${NOTIFICATION_DB_NAME}
+      - DB_USER=${NOTIFICATION_DB_USER}
+      - DB_PASSWORD=${NOTIFICATION_DB_PASSWORD}
+      - DB_PORT=${NOTIFICATION_DB_PORT}
+      - DB_HOST=${NOTIFICATION_DB_HOST}

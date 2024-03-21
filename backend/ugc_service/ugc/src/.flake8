@@ -1,0 +1,6 @@
+[flake8]
+extend-ignore = E501
+per-file-ignores =
+    # данная рекомендация вызывает ошибку
+    ./crud/application.py: E712
+exclude = ./auth_by_grpc/protobufs,./models/migrations/versions,./models/migrations/env.py

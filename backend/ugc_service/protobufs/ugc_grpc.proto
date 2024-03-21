@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package UgcService.v1;
+
+service UgcGRPC {
+  rpc UpdateApplicationByStatus (UpdateApplicationByStatusRequest) returns (UpdateApplicationByStatusResponse) {}
+  rpc ListApplicationWhiteList (ListApplicationWhiteListRequest) returns (ListApplicationWhiteListResponse) {}
+}
+
+message UpdateApplicationByStatusRequest {
+  enum StatusTokenEnum {
+    ping = 0;
+    mint_2 = 1;
+    stop = 2;
+    sold_out = 3;
+  }
+  StatusTokenEnum status_token = 1;
+  string collection_id = 2;
+}
+
+message UpdateApplicationByStatusResponse {
+  string status = 1;
+}
+
+message ApplicationStruct{
+//  Выводим только необходимые поля для передачи в сервис уведомлений
+  string id = 1;
+  string user_wallet = 2;
+  string email = 3;
+}
+
+message ListApplicationWhiteListRequest {
+  //  Поле Фильтрации
+  string collection_id = 1;
+}
+
+message ListApplicationWhiteListResponse {
+  repeated ApplicationStruct data = 1;
+}

@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package notification_api;
+import "google/protobuf/struct.proto";
+
+message NotificationRequest {
+  enum ImportanceTypeEnum {
+    HIGH = 0;
+    DEFAULT = 1;
+    LOW = 2;
+  }
+  enum TransmissionTypeEnum {
+    UNICAST = 0;
+    MULTICAST = 1;
+  }
+  enum CarrierTypeEnum {
+    EMAIL = 0;
+  }
+
+  string id = 1;
+  ImportanceTypeEnum importance_type = 2;
+  TransmissionTypeEnum transmission_type = 3;
+  string content_type = 4;
+  CarrierTypeEnum carrier_type = 5;
+  google.protobuf.Struct payload = 6;
+}
+
+message NotificationResponse {
+  string status = 1;
+
+}
+
+service Notification {
+  rpc NotifyUser (NotificationRequest) returns (NotificationResponse) {}
+}

@@ -1,0 +1,181 @@
+version: "3.9"
+
+services:
+
+  handler_elastic_setup:
+    networks:
+      - dev_handler_network
+    container_name: dev_handler_service_setup_es
+    image: elasticsearch:${DEV_HANDLER_ES_VERSION}
+    volumes:
+      - "handler_certs_volume:/usr/share/elasticsearch/config/certs"
+      - "../handler/elastic/setup.sh:/usr/elastic/setup.sh"
+    user: "0"
+    command: [ "/usr/elastic/setup.sh" ]
+    healthcheck:
+      test: [ "CMD-SHELL", "[ -f config/certs/es01/es01.crt ]" ]
+      interval: 1s
+      timeout: 5s
+      retries: 120
+    environment:
+      - ELASTIC_PASSWORD=${DEV_HANDLER_ES_PASSWORD}
+      - KIBANA_PASSWORD=${DEV_HANDLER_KIBANA_PASSWORD}
+
+  es01:
+    networks:
+      - dev_handler_network
+    restart: always
+    container_name: dev_handler_service_es_01
+    depends_on:
+      handler_elastic_setup:
+        condition: service_healthy
+    image: elasticsearch:${DEV_HANDLER_ES_VERSION}
+    volumes:
+      - "handler_certs_volume:/usr/share/elasticsearch/config/certs"
+      - "handler_esdata01_volume:/usr/share/elasticsearch/data"
+    expose:
+      - "${DEV_HANDLER_ES_PORT}"
+    environment:
+      - discovery.type=single-node
+      - ELASTIC_PASSWORD=${DEV_HANDLER_ES_PASSWORD}
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.key=certs/es01/es01.key
+      - xpack.security.http.ssl.certificate=certs/es01/es01.crt
+      - xpack.security.http.ssl.certificate_authorities=certs/ca/ca.crt
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.key=certs/es01/es01.key
+      - xpack.security.transport.ssl.certificate=certs/es01/es01.crt
+      - xpack.security.transport.ssl.certificate_authorities=certs/ca/ca.crt
+      - xpack.security.transport.ssl.verification_mode=certificate
+      - xpack.license.self_generated.type=${DEV_HANDLER_ES_LICENSE}
+    mem_limit: ${DEV_HANDLER_ES_MEM_LIMIT}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s --cacert config/certs/ca/ca.crt https://localhost:${DEV_HANDLER_ES_PORT} | grep -q 'missing authentication credentials'",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+
+  kibana:
+    networks:
+      - dev_handler_network
+    depends_on:
+      es01:
+        condition: service_healthy
+    image: kibana:${DEV_HANDLER_ES_VERSION}
+    volumes:
+      - handler_certs_volume:/usr/share/kibana/config/certs
+      - handler_kibanadata_volume:/usr/share/kibana/data
+    environment:
+      - SERVERNAME=kibana
+      - ELASTICSEARCH_HOSTS=https://es01:${DEV_HANDLER_ES_PORT}
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=${DEV_HANDLER_KIBANA_PASSWORD} 
+      - ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=config/certs/ca/ca.crt
+    mem_limit: ${DEV_HANDLER_ES_MEM_LIMIT}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s -I http://localhost:${DEV_HANDLER_KIBANA_PORT} | grep -q 'HTTP/1.1 302 Found'",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+
+  etl:
+    restart: always 
+    command: ["python", "main.py"]
+    container_name: dev_handler_etl
+    networks:
+      - dev_admin_service_network
+      - dev_handler_network
+    image: mwtechdocker/checkbrand-handler-etl:${DEV_IMAGES_TAG}
+    depends_on:
+      handler_elastic_setup:
+        condition: service_healthy
+      es01:
+        condition: service_healthy
+    volumes:
+      - handler_certs_volume:/usr/etl/certs
+      - handler_etl_volume:/usr/etl/src/volumes
+    environment:
+      - DEBUG=${DEV_HANDLER_ETL_DEBUG}
+      - ES_HOST=es01
+      - ES_PORT=${DEV_HANDLER_ES_PORT}
+      - ES_USER=${DEV_HANDLER_ES_USER}
+      - ES_PASSWORD=${DEV_HANDLER_ES_PASSWORD}
+      - ES_PATH_CA_CRT=${DEV_HANDLER_ETL_ES_PATH_CA_CRT}
+      - ADMIN_DB_HOST=${DEV_ADMIN_DB_HOST}
+      - ADMIN_DB_PORT=${DEV_ADMIN_DB_PORT}
+      - ADMIN_DB_USER=${DEV_ADMIN_DB_USER}
+      - ADMIN_DB_PASSWORD=${DEV_ADMIN_DB_PASSWORD}
+      - ADMIN_DB_NAME=${DEV_ADMIN_DB_NAME}
+
+  api_service:
+    restart: always
+    networks:
+      - dev_backend_network
+      - dev_handler_network
+    image: mwtechdocker/checkbrand-handler-api:${DEV_IMAGES_TAG}
+    depends_on:
+      - es01
+    container_name: dev_handler_api
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "${DEV_HANDLER_API_SERVICE_PORT}"]
+    volumes:
+      - handler_certs_volume:/usr/api_service/certs
+    expose:
+      - "${DEV_HANDLER_API_SERVICE_PORT}"
+    environment:
+      - DEBUG=${DEV_HANDLER_API_SERVICE_DEBUG}
+      - SERVER_NAME=dev_handler_api
+      - ES_HOST=es01
+      - ES_PORT=${DEV_HANDLER_ES_PORT}
+      - ES_USER=${DEV_HANDLER_ES_USER}
+      - ES_PASSWORD=${DEV_HANDLER_ES_PASSWORD}
+      - ES_PATH_CA_CRT=${DEV_HANDLER_API_SERVICE_ES_PATH_CA_CRT}
+      - CACHE_PORT=${DEV_HANDLER_REDIS_PORT}
+      - CACHE_HOST=${DEV_HANDLER_REDIS_HOST}
+      - CACHE_PASSWORD=${DEV_HANDLER_REDIS_PASSWORD}
+
+  handler_redis:
+    container_name: dev_handler_service_redis
+    image: redis:7.2.2-alpine
+    networks:
+      - dev_handler_network
+    restart: always
+    expose:
+      - "${DEV_HANDLER_REDIS_PORT}"
+    command: redis-server --save 20 1 --loglevel warning --requirepass ${DEV_HANDLER_REDIS_PASSWORD} --port ${DEV_HANDLER_REDIS_PORT}
+
+
+volumes:
+  handler_certs_volume:
+    name: dev_handler_es_data_certs_volume
+    driver: local
+  handler_etl_volume:
+    name: dev_handler_etl_volume
+    driver: local
+  handler_esdata01_volume:
+    name: dev_handler_es_data_01_volume
+    driver: local
+  handler_kibanadata_volume:
+    name: dev_handler_es_data_kibana_volume
+    driver: local
+
+networks:
+  dev_admin_service_network:
+    external: true
+  dev_backend_network:
+    external: true
+  dev_handler_network:
+    name: dev_handler_service_network

@@ -1,0 +1,77 @@
+version: "3.8"
+
+services:
+
+  db:
+    container_name: UGCServiceDB${UGC_SUFFIX_NAME}
+    image: postgres:15.1-alpine
+    networks:
+      - ugc_default
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+      - ./postgres/create_schema.sql:/docker-entrypoint-initdb.d/create_schema.sql
+    ports:
+      - "5435:5432"
+    environment:
+      - POSTGRES_USER=${UGC_DB_USER}
+      - POSTGRES_PASSWORD=${UGC_DB_PASSWORD}
+      - POSTGRES_DB=${UGC_DB_NAME}
+
+  service:
+    extends:
+      file: ugc_base.yml
+      service: ugc_base
+    depends_on:
+      - db
+      - redis
+    container_name: UGCServiceServiceMain${UGC_SUFFIX_NAME}
+    command: ["python", "main.py"]
+#    command: ["gunicorn", "--chdir", "app", "main:app", "-w", "2", "--threads", "2", "-b", "0.0.0.0:8000"]
+    #CMD ["uvicorn", "main:app", "--reload", "--host", "0.0.0.0", "--port", "6000"] TODO: или так ?
+    ports:
+      - "6000:6000"
+
+  service_worker:
+    extends:
+      file: ugc_base.yml
+      service: ugc_base
+    depends_on:
+      - db
+      - redis
+    container_name: UGCServiceServiceWorker${UGC_SUFFIX_NAME}
+    command: ["python", "celery_main.py"]
+    environment:
+      - SERVER_NAME=UGCServiceServiceWorker
+
+  service_grpc:
+    extends:
+      file: ugc_base.yml
+      service: ugc_base
+    depends_on:
+      - db
+      - redis
+    container_name: UGCServiceServiceGRPC${UGC_SUFFIX_NAME}
+    command: ["python", "grpc_server.py"]
+    ports:
+      - "50056:50056"
+
+  redis:
+    container_name: UGCServiceRedis${UGC_SUFFIX_NAME}
+    image: redis:7.0.8-alpine
+    networks:
+      - ugc_default
+    restart: always
+    ports:
+      - "6371:6379"
+    command: redis-server --save 20 1 --loglevel warning --requirepass ${UGC_REDIS_PASSWORD}
+
+volumes:
+  postgres_data:
+    name: UGCServiceDBPostgresData${UGC_SUFFIX_NAME}
+
+networks:
+  backend_dev:
+    external: true
+  ugc_default:
+    name: UGCServiceNetwork${UGC_SUFFIX_NAME}

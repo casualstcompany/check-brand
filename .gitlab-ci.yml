@@ -1,0 +1,110 @@
+stages:
+  - build
+  # - deploy
+
+build_admin_service:
+  image: docker:latest
+  services:
+    - docker:dind
+  stage: build
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_DRIVER: overlay2
+    PROJECT_NAME: checkbrand
+    VERSION: 0.0.$CI_PIPELINE_IID
+    IMAGE_NAME: "$DOCKERHUB_USERNAME/$PROJECT_NAME-admin-service:$VERSION"
+  script:
+    - cp ./deployments/docker/admin/service/Dockerfile ./Dockerfile
+    - docker build -t temp_name .
+    - docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD
+    - docker tag temp_name $IMAGE_NAME
+    - docker push $IMAGE_NAME
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+
+build_auth_service:
+  image: docker:latest
+  services:
+    - docker:dind
+  stage: build
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_DRIVER: overlay2
+    PROJECT_NAME: checkbrand
+    VERSION: 0.0.$CI_PIPELINE_IID
+    IMAGE_NAME: "$DOCKERHUB_USERNAME/$PROJECT_NAME-auth-service:$VERSION"
+  script:
+    - cp ./deployments/docker/auth/service/Dockerfile ./Dockerfile
+    - docker build -t temp_name .
+    - docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD
+    - docker tag temp_name $IMAGE_NAME
+    - docker push $IMAGE_NAME
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+
+build_handler_api:
+  image: docker:latest
+  services:
+    - docker:dind
+  stage: build
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_DRIVER: overlay2
+    PROJECT_NAME: checkbrand
+    VERSION: 0.0.$CI_PIPELINE_IID
+    IMAGE_NAME: "$DOCKERHUB_USERNAME/$PROJECT_NAME-handler-api:$VERSION"
+  script:
+    - cp ./deployments/docker/handler/api/Dockerfile ./Dockerfile
+    - docker build -t temp_name .
+    - docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD
+    - docker tag temp_name $IMAGE_NAME
+    - docker push $IMAGE_NAME
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+
+build_handler_etl:
+  image: docker:latest
+  services:
+    - docker:dind
+  stage: build
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_DRIVER: overlay2
+    PROJECT_NAME: checkbrand
+    VERSION: 0.0.$CI_PIPELINE_IID
+    IMAGE_NAME: "$DOCKERHUB_USERNAME/$PROJECT_NAME-handler-etl:$VERSION"
+  script:
+    - cp ./deployments/docker/handler/etl/Dockerfile ./Dockerfile
+    - docker build -t temp_name .
+    - docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD
+    - docker tag temp_name $IMAGE_NAME
+    - docker push $IMAGE_NAME
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+
+deploy_development_server:
+  stage: build
+  script:
+    - - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash
+    - mkdir ./nginx/ssl/live/$DEV_DOMAIN
+    - cp ./.secure_files/fullchain.pem ./nginx/ssl/live/$DEV_DOMAIN/fullchain.pem
+    - cp ./.secure_files/privkey.pem ./nginx/ssl/live/$DEV_DOMAIN/privkey.pem
+    - docker network create -d bridge dev_backend_network || true
+    - docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD
+    - docker compose -f deployments/docker/composes/auth_dev.yml
+      -f deployments/docker/composes/admin_dev.yml
+      -f deployments/docker/composes/handler_dev.yml
+      -f deployments/docker/composes/nginx_dev.yml
+      up -d
+  environment:
+    name: development
+    url: https://backend.checkbrand.space/
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+  tags:
+    - development

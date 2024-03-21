@@ -1,0 +1,83 @@
+version: '3.9'
+
+services:
+
+  admin_service:
+    extends:
+      file: ../admin/service/local_admin_base.yml
+      service: admin_panel_base
+    depends_on:
+      - admin_db
+      - admin_redis
+    container_name: local_admin_service_admin
+    command: ["python", "manage.py", "runserver", "0.0.0.0:${LOCAL_ADMIN_PORT}"]
+    volumes:
+      - admin_static_volume:/usr/admin_panel/src/staticfiles
+      
+      - ../../../backend/admin_service/admin_panel/src/:/usr/admin_panel/src/
+
+      - ../../../admin_protobufs/:/usr/admin_panel/src/auth_by_grpc/protobufs/
+      - ../../../admin_protobufs/:/usr/admin_panel/src/grps_clients/ugc/protobufs/
+      - ../../../admin_protobufs/:/usr/admin_panel/src/grps_clients/notification/protobufs/
+      - ../../../admin_protobufs/:/usr/admin_panel/src/nft_tokens/grpc/
+
+    ports:
+      - "${LOCAL_ADMIN_PORT}:${LOCAL_ADMIN_PORT}"
+    expose:
+      - "${LOCAL_ADMIN_PORT}"
+    environment:
+      - SERVER_NAME=admin_panel
+
+  admin_celery_worker:
+    extends:
+      file: ../admin/service/local_admin_base.yml
+      service: admin_panel_base
+    depends_on:
+      - admin_db
+      - admin_redis
+    container_name: local_admin_service_celery_worker
+    command: ["celery", "-A", "config", "worker", "-l", "debug"]
+    environment:
+      - SERVER_NAME=celery_worker
+
+  admin_db:
+    container_name: local_admin_service_db
+    image: postgres:16.0-alpine
+    networks:
+      - local_admin_network
+    restart: always
+    volumes:
+      - admin_postgres_data:/var/lib/postgresql/data/
+    command: ["-p", "${LOCAL_ADMIN_DB_PORT}"]
+    ports:
+      - "${LOCAL_ADMIN_DB_PORT}:${LOCAL_ADMIN_DB_PORT}"
+    expose:
+      - "${LOCAL_ADMIN_DB_PORT}"
+    environment:
+      - POSTGRES_USER=${LOCAL_ADMIN_DB_USER}
+      - POSTGRES_PASSWORD=${LOCAL_ADMIN_DB_PASSWORD}
+      - POSTGRES_DB=${LOCAL_ADMIN_DB_NAME}
+
+  admin_redis:
+    container_name: local_admin_service_redis
+    image: redis:7.2.2-alpine
+    networks:
+      - local_admin_network
+    restart: always
+    ports:
+      - "${LOCAL_ADMIN_REDIS_PORT}:${LOCAL_ADMIN_REDIS_PORT}"
+    expose:
+      - "${LOCAL_ADMIN_REDIS_PORT}"
+    command: redis-server --save 20 1 --loglevel warning --requirepass ${LOCAL_ADMIN_REDIS_PASSWORD} --port ${LOCAL_ADMIN_REDIS_PORT}
+
+networks:
+  local_backend_network:
+    external: true
+  local_admin_network:
+    name: local_admin_service_network
+
+volumes:
+  admin_postgres_data:
+    name: local_admin_service_db_data_volume
+  admin_static_volume:
+    name: local_admin_service_static_data_volume

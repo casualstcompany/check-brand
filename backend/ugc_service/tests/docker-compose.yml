@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    networks:
+      - UGCServiceNetworkDev
+      - AuthServiceNetworkDev
+      - AdminServiceNetworkDev
+      - backend_dev
+    command: ["pytest", "/usr/tests/functional/src"]
+    environment:
+      - UGC_HOST=${UGC_HOST}
+      - UGC_PORT=${UGC_PORT}
+      - UGC_GRPC_HOST=${UGC_GRPC_HOST}
+      - UGC_GRPC_PORT=${UGC_GRPC_PORT}
+      - AUTH_HOST=${AUTH_HOST}
+      - AUTH_PORT=${AUTH_PORT}
+      - AUTH_GRPC_HOST=${AUTH_GRPC_HOST}
+      - AUTH_GRPC_PORT=${AUTH_GRPC_PORT}
+      - AUTH_DB_NAME=${AUTH_DB_NAME}
+      - AUTH_DB_USER=${AUTH_DB_USER}
+      - AUTH_DB_PASSWORD=${AUTH_DB_PASSWORD}
+      - AUTH_DB_PORT=${AUTH_DB_PORT}
+      - AUTH_DB_HOST=${AUTH_DB_HOST}
+      - ADMIN_DB_NAME=${ADMIN_DB_NAME}
+      - ADMIN_DB_USER=${ADMIN_DB_USER}
+      - ADMIN_DB_PASSWORD=${ADMIN_DB_PASSWORD}
+      - ADMIN_DB_PORT=${ADMIN_DB_PORT}
+      - ADMIN_DB_HOST=${ADMIN_DB_HOST}
+
+networks:
+  UGCServiceNetworkDev:
+    external: true
+  AuthServiceNetworkDev:
+    external: true
+  AdminServiceNetworkDev:
+    external: true
+  backend_dev:
+    external: true

@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    networks:
+      - notification_dev
+    command: ["pytest", "/usr/tests/functional/src"]
+    environment:
+      - NOTIFICATION_API_HOST=${NOTIFICATION_API_HOST}
+      - NOTIFICATION_API_PORT=${NOTIFICATION_API_PORT}
+
+networks:
+  notification_dev:
+    external: true
+    name: NotificationServiceNetworkDev

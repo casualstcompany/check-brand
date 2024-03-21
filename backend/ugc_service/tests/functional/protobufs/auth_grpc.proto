@@ -1,0 +1,17 @@
+syntax = "proto3";
+package role;
+
+message AuthRequest {
+  string access_key = 1;
+}
+
+message AuthResponse {
+  string user_id = 1;
+  string user_wallet = 2;
+  repeated string user_role = 3;
+}
+
+
+service Auth {
+  rpc GetUserRole (AuthRequest) returns (AuthResponse) {}
+}

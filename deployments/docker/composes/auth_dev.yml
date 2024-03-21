@@ -1,0 +1,75 @@
+version: "3.9"
+
+services:
+
+  auth_db:
+    container_name: dev_auth_service_db
+    image: postgres:16.0-alpine
+    networks:
+      - dev_auth_network
+    restart: always
+    volumes:
+      - auth_postgres_data:/var/lib/postgresql/data/
+    command: ["-p", "${DEV_AUTH_DB_PORT}"]
+    ports:
+      - "${DEV_AUTH_DB_PORT}:${DEV_AUTH_DB_PORT}"
+    expose:
+      - "${DEV_AUTH_DB_PORT}"
+    environment:
+      - POSTGRES_USER=${DEV_AUTH_DB_USER}
+      - POSTGRES_PASSWORD=${DEV_AUTH_DB_PASSWORD}
+      - POSTGRES_DB=${DEV_AUTH_DB_NAME}
+
+  auth_redis:
+    container_name: dev_auth_service_redis
+    image: redis:7.2.2-alpine
+    networks:
+      - dev_auth_network
+    restart: always
+    expose:
+      - "${DEV_AUTH_REDIS_PORT}"
+    command: redis-server --save 20 1 --loglevel warning --requirepass ${DEV_AUTH_REDIS_PASSWORD} --port ${DEV_AUTH_REDIS_PORT}
+
+  auth_rest:
+    container_name: dev_auth_service_rest
+    image: mwtechdocker/checkbrand-auth-service:${DEV_IMAGES_TAG}
+    extends:
+      file: ../auth/service/dev_auth_base.yml
+      service: auth_base
+    depends_on:
+      - auth_db
+      - auth_redis
+    volumes:
+      - auth_media_volume:/usr/auth/src/media/
+    expose:
+      - "${DEV_AUTH_REST_PORT}"
+    command: ["gunicorn", "--chdir", "./app","main:app", "-b", ":${DEV_AUTH_REST_PORT}"]
+    environment:
+      - SERVER_NAME=auth_service_rest
+
+  auth_grpc:
+    container_name: dev_auth_service_grpc
+    image: mwtechdocker/checkbrand-auth-service:${DEV_IMAGES_TAG}
+    extends:
+      file: ../auth/service/dev_auth_base.yml
+      service: auth_base
+    depends_on:
+      - auth_db
+      - auth_redis
+    expose:
+      - "${DEV_AUTH_GRPC_PORT}"
+    command: ["python", "app/grpc_server.py"]
+    environment:
+      - SERVER_NAME=auth_service_grpc
+
+networks:
+  dev_backend_network:
+    external: true
+  dev_auth_network:
+    name: dev_auth_service_network
+
+volumes:
+  auth_postgres_data:
+    name: dev_auth_service_db_data_volume
+  auth_media_volume:
+    name: dev_auth_service_media_data_volume

@@ -1,0 +1,27 @@
+services:
+  auth_base:
+    restart: always
+    networks:
+      - local_backend_network
+      - local_auth_network
+    build:
+      context: ./../../../..
+      dockerfile: ./deployments/docker/auth/service/Dockerfile
+    environment:
+      - LOCAL_RUN=True
+      - JWT_SECRET_KEY=${LOCAL_AUTH_SERVICE_JWT_SECRET_KEY}
+      - SECRET_KEY=${LOCAL_AUTH_SERVICE_SECRET_KEY}
+      - DB_NAME=${LOCAL_AUTH_DB_NAME}
+      - DB_USER=${LOCAL_AUTH_DB_USER}
+      - DB_PASSWORD=${LOCAL_AUTH_DB_PASSWORD}
+      - DB_PORT=${LOCAL_AUTH_DB_PORT}
+      - DB_HOST=${LOCAL_AUTH_DB_HOST}
+      - REDIS_HOST=${LOCAL_AUTH_REDIS_HOST}
+      - REDIS_PORT=${LOCAL_AUTH_REDIS_PORT}
+      - REDIS_PASSWORD=${LOCAL_AUTH_REDIS_PASSWORD}
+
+      - AUTH_EMAIL_HOST=${LOCAL_AUTH_EMAIL_HOST}
+      - AUTH_EMAIL_PORT=${LOCAL_AUTH_EMAIL_PORT}
+      - AUTH_EMAIL_HOST_USER=${LOCAL_AUTH_EMAIL_HOST_USER}
+      - AUTH_EMAIL_HOST_PASSWORD=${LOCAL_AUTH_EMAIL_HOST_PASSWORD}
+      - AUTH_EMAIL_DEFAULT_FROM_EMAIL=${LOCAL_AUTH_EMAIL_DEFAULT_FROM_EMAIL}

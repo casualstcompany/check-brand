@@ -1,0 +1,148 @@
+version: '3.8'
+
+services:
+
+  rabbitmq:
+    container_name: NotificationServiceRabbitMQ${NOTIFICATION_SUFFIX_NAME}
+    image: rabbitmq:3.11.6-management
+    restart: always
+    hostname: rabbitmq
+    networks:
+      - notification_default
+    volumes:
+#      - ./rabbitmq:/var/lib/rabbitmq
+      - rabbit_volume:/var/lib/rabbitmq
+    ports:
+      - "5674:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=${NOTIFICATION_RABBITMQ_DEFAULT_USER}
+      - RABBITMQ_DEFAULT_PASS=${NOTIFICATION_RABBITMQ_DEFAULT_PASS}
+      - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit log_levels [{connection,error},{default,error}] disk_free_limit 2147483648
+
+  redis:
+    container_name: NotificationServiceRedis${NOTIFICATION_SUFFIX_NAME}
+    image: redis:7.0.8-alpine
+    networks:
+      - notification_default
+    restart: always
+    ports:
+      - "6377:6379"
+    command: redis-server --save 20 1 --loglevel warning --requirepass ${NOTIFICATION_REDIS_PASSWORD}
+
+  api:
+    container_name: NotificationServiceApi${NOTIFICATION_SUFFIX_NAME}
+    restart: always
+    build:
+      context: .
+      dockerfile: notification_api/Dockerfile
+    command: ["python", "main.py"]
+    networks:
+      - notification_default
+      - backend_dev
+    ports:
+      - "50053:50055"
+#    depends_on:
+#      - rabbitmq
+    environment:
+      - DEBUG=${NOTIFICATION_API_DEBUG}
+      - GRPC_SERVER_PORT=${NOTIFICATION_API_PORT}
+      - BROKER_USER=${NOTIFICATION_RABBITMQ_DEFAULT_USER}
+      - BROKER_PASSWORD=${NOTIFICATION_RABBITMQ_DEFAULT_PASS}
+      - BROKER_PORT=${NOTIFICATION_RABBITMQ_PORT}
+      - BROKER_HOST=${NOTIFICATION_RABBITMQ_HOST}
+      - CACHE_PORT=${NOTIFICATION_REDIS_PORT}
+      - CACHE_HOST=${NOTIFICATION_REDIS_HOST}
+      - CACHE_PASSWORD=${NOTIFICATION_REDIS_PASSWORD}
+
+  worker:
+    container_name: NotificationServiceWorker${NOTIFICATION_SUFFIX_NAME}
+    restart: always
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    command: ["python", "main.py"]
+    networks:
+      - notification_default
+    depends_on:
+      - rabbitmq
+      - admin_grpc
+    environment:
+      - DEBUG=${NOTIFICATION_WORKER_DEBUG}
+      - EMAIL_DELIVERY_DOMAIN_NAME=${NOTIFICATION_WORKER_EMAIL_DELIVERY_DOMAIN_NAME}
+      - EMAIL_DELIVERY_API_KEY=${NOTIFICATION_WORKER_EMAIL_DELIVERY_API_KEY}
+      - EMAIL_DELIVERY_BASE_URL=${NOTIFICATION_WORKER_EMAIL_DELIVERY_BASE_URL}
+      - EMAIL_DELIVERY_DEFAULT_FROM_EMAIL=${NOTIFICATION_WORKER_EMAIL_DELIVERY_DEFAULT_FROM_EMAIL}
+      - EMAIL_DELIVERY_NAME_SENDER=${NOTIFICATION_WORKER_EMAIL_DELIVERY_NAME_SENDER}
+      - ADMIN_GRPC_HOST=${NOTIFICATION_ADMIN_GRPC_HOST}
+      - ADMIN_GRPC_PORT=${NOTIFICATION_ADMIN_GRPC_PORT}
+      - BROKER_USER=${NOTIFICATION_RABBITMQ_DEFAULT_USER}
+      - BROKER_PASSWORD=${NOTIFICATION_RABBITMQ_DEFAULT_PASS}
+      - BROKER_PORT=${NOTIFICATION_RABBITMQ_PORT}
+      - BROKER_HOST=${NOTIFICATION_RABBITMQ_HOST}
+      - BROKER_PREFETCH_COUNT=${NOTIFICATION_WORKER_PREFETCH_COUNT}
+      - BROKER_TIME_SLEEP=${NOTIFICATION_WORKER_TIME_SLEEP}
+
+  admin:
+    extends:
+      file: admin_base.yml
+      service: admin_base
+    depends_on:
+      - db
+    container_name: NotificationServiceAdmin${NOTIFICATION_SUFFIX_NAME}
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+#    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000
+    volumes:
+      - ./notification_admin/src/:/usr/notification_admin/src
+      - static_volume:/usr/notification_admin/src/staticfiles
+    ports:
+      - "8004:8000"
+    environment:
+      - SERVER_NAME=ADMIN
+    networks:
+      - notification_default
+      - backend_dev
+
+  admin_grpc:
+    extends:
+      file: admin_base.yml
+      service: admin_base
+    depends_on:
+      - db
+    container_name: NotificationServiceAdminGRPC${NOTIFICATION_SUFFIX_NAME}
+    command: ["python", "manage.py", "grpcrunaioserver", "0.0.0.0:50054"]
+    ports:
+      - "50054:50054"
+    environment:
+      - SERVER_NAME=ADMIN_GRPC
+
+  db:
+    container_name: NotificationServiceDB${NOTIFICATION_SUFFIX_NAME}
+    restart: always
+    image: postgres:15.1-alpine
+    networks:
+      - notification_default
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+      - ./db/create_tables.sql:/docker-entrypoint-initdb.d/create_tables.sql
+    ports:
+      - "5434:5432"
+    environment:
+      - POSTGRES_USER=${NOTIFICATION_DB_USER}
+      - POSTGRES_PASSWORD=${NOTIFICATION_DB_PASSWORD}
+      - POSTGRES_DB=${NOTIFICATION_DB_NAME}
+
+
+volumes:
+  postgres_data:
+    name: NotificationServiceDBPostgresData${NOTIFICATION_SUFFIX_NAME}
+  static_volume:
+    name: NotificationServiceAdminStaticData${NOTIFICATION_SUFFIX_NAME}
+  rabbit_volume:
+    name: NotificationServiceRabbitData${NOTIFICATION_SUFFIX_NAME}
+
+networks:
+  backend_dev:
+    external: true
+  notification_default:
+    name: NotificationServiceNetwork${NOTIFICATION_SUFFIX_NAME}

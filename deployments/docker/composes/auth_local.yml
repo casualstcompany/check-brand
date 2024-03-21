@@ -1,0 +1,86 @@
+version: "3.9"
+
+services:
+
+  auth_db:
+    container_name: local_auth_service_db
+    image: postgres:16.0-alpine
+    networks:
+      - local_auth_network
+    restart: always
+    volumes:
+      - auth_postgres_data:/var/lib/postgresql/data/
+    ports:
+      - "${LOCAL_AUTH_DB_PORT}:${LOCAL_AUTH_DB_PORT}"
+    command: ["-p", "${LOCAL_AUTH_DB_PORT}"]
+    expose:
+      - "${LOCAL_AUTH_DB_PORT}"
+    environment:
+      - POSTGRES_USER=${LOCAL_AUTH_DB_USER}
+      - POSTGRES_PASSWORD=${LOCAL_AUTH_DB_PASSWORD}
+      - POSTGRES_DB=${LOCAL_AUTH_DB_NAME}
+
+  auth_redis:
+    container_name: local_auth_service_redis
+    image: redis:7.2.2-alpine
+    networks:
+      - local_auth_network
+    restart: always
+    ports:
+      - "${LOCAL_AUTH_REDIS_PORT}:${LOCAL_AUTH_REDIS_PORT}"
+    expose:
+      - "${LOCAL_AUTH_REDIS_PORT}"
+    command: redis-server --save 20 1 --loglevel warning --requirepass ${LOCAL_AUTH_REDIS_PASSWORD} --port ${LOCAL_AUTH_REDIS_PORT}
+
+  auth_rest:
+    container_name: local_auth_service_rest
+    extends:
+      file: ../auth/service/local_auth_base.yml
+      service: auth_base
+    depends_on:
+      - auth_db
+      - auth_redis
+    volumes:
+      - ../../../backend/auth_service/auth/src/migrations/:/usr/auth/src/migrations/
+      - ../../../backend/auth_service/auth/src/app/:/usr/auth/src/app/
+      - ../../../auth_protobufs/:/usr/auth/src/app/components/protobufs/
+      - auth_media_volume:/usr/auth/src/media/
+    ports:
+      - "${LOCAL_AUTH_REST_PORT}:${LOCAL_AUTH_REST_PORT}"
+    expose:
+      - "${LOCAL_AUTH_REST_PORT}"
+    command: ["python", "app/main.py"]
+    environment:
+      - SERVER_NAME=auth_service_rest
+      - LOCAL_MODE_TESTING=True
+
+  auth_grpc:
+    container_name: local_auth_service_grpc
+    volumes:
+      - ../../../backend/auth_service/auth/src/migrations/:/usr/auth/src/migrations/
+      - ../../../auth_protobufs/:/usr/auth/src/app/components/protobufs/
+    extends:
+      file: ../auth/service/local_auth_base.yml
+      service: auth_base
+    depends_on:
+      - auth_db
+      - auth_redis
+    ports:
+      - "${LOCAL_AUTH_GRPC_PORT}:${LOCAL_AUTH_GRPC_PORT}"
+    expose:
+      - "${LOCAL_AUTH_GRPC_PORT}"
+    command: ["python", "app/grpc_server.py"]
+    environment:
+      - SERVER_NAME=auth_service_grpc
+
+networks:
+  local_backend_network:
+    external: true
+  local_auth_network:
+    name: local_auth_service_network
+
+volumes:
+  auth_postgres_data:
+    name: local_auth_service_db_data_volume
+  auth_media_volume:
+    name: local_auth_service_media_data_volume
